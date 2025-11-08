@@ -21,7 +21,7 @@ const handleLocationClick = (location: PointArea) => {
   <div class="py-2">
     <h2 class="text-xl font-bold text-[#171B1D] mb-4 text-center">{{ title }}</h2>
     
-    <div class="space-y-2">
+    <div class="flex flex-col gap-2 my-1.5">
       <button
         v-for="location in locations"
         :key="location.id"

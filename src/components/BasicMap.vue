@@ -2,37 +2,60 @@
 import { onMounted, onUnmounted, ref, computed } from 'vue'
 import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
-// 元件：底部抽屜、圖層切換按鈕、圖層選擇面板、篩選按鈕列、地點列表
+// 元件：底部抽屜、圖層切換按鈕、圖層選擇面板、篩選按鈕列、地點列表、點位標記
 import BottomSheet from './molecules/BottomSheet.vue'
 import LayerToggleButton from './molecules/LayerToggleButton.vue'
 import LayerSelector from './map/LayerSelector.vue'
 import FilterButtons from './map/FilterButtons.vue'
 import LocationList from './map/LocationList.vue'
+import PointMarkers from './map/PointMarkers.vue'
 // 資料與型別：篩選按鈕設定與所有點位資料
-import { filterButtons, allLocations } from '@/data/mockMapData'
+import { filterButtons, combineAllLocations } from '@/data/mockMapData'
+import { fetchColdSpots } from '@/api/sites'
 import type { FilterType, PointArea } from '@/types/mapData'
 
 // 地圖容器與實例
 const mapContainer = ref<HTMLDivElement | null>(null)
-let mapInstance: mapboxgl.Map | null = null
+const mapInstance = ref<mapboxgl.Map | null>(null) as any
 
 // 抽屜顯示狀態（圖層 / 篩選）
 const showLayerSheet = ref(false)
 const showFilterSheet = ref(false)
 
+// 涼適點數據（從API獲取）
+const coldSpots = ref<PointArea[]>([])
+
+// 所有地點數據（動態組合）
+const allLocations = computed<PointArea[]>(() => {
+  return combineAllLocations(coldSpots.value)
+})
+
 // 篩選狀態與衍生資料
 const activeFilter = ref<FilterType | null>(null)
 const filteredLocations = computed<PointArea[]>(() => {
   if (!activeFilter.value) return []
-  return allLocations.filter(location => location.type === activeFilter.value)
+  return allLocations.value.filter(location => location.type === activeFilter.value)
 })
 const activeFilterLabel = computed(() => {
   if (!activeFilter.value) return ''
   return filterButtons.find(btn => btn.id === activeFilter.value)?.label || ''
 })
 
+// 載入涼適點數據
+const loadColdSpots = async () => {
+  try {
+    const spots = await fetchColdSpots()
+    coldSpots.value = spots
+  } catch (error) {
+    console.error('載入涼適點數據失敗:', error)
+    coldSpots.value = []
+  }
+}
+
 // 地圖初始化（載入樣式與 MRT 路線）
-onMounted(() => {
+onMounted(async () => {
+  await loadColdSpots()
+
   const token = import.meta.env.VITE_MAPBOX_API_KEY
   if (!token) {
     console.warn('VITE_MAPBOX_API_KEY is not set')
@@ -43,7 +66,7 @@ onMounted(() => {
     return
   }
 
-  mapInstance = new mapboxgl.Map({
+  mapInstance.value = new mapboxgl.Map({
     container: mapContainer.value,
     style: 'mapbox://styles/mapbox/streets-v12',
     center: [121.56, 25.03],
@@ -57,23 +80,23 @@ onMounted(() => {
     ],
   })
 
-  mapInstance.touchZoomRotate.disableRotation()
-  mapInstance.touchPitch.disable()
+  mapInstance.value.touchZoomRotate.disableRotation()
+  mapInstance.value.touchPitch.disable()
 
-  mapInstance.on('load', () => {
-    if (!mapInstance) {
+  mapInstance.value.on('load', () => {
+    if (!mapInstance.value) {
       return
     }
 
-    if (!mapInstance.getSource('mrt-routes')) {
-      mapInstance.addSource('mrt-routes', {
+    if (!mapInstance.value.getSource('mrt-routes')) {
+      mapInstance.value.addSource('mrt-routes', {
         type: 'geojson',
         data: '/data/routes.geojson',
       })
     }
 
-    if (!mapInstance.getLayer('mrt-routes-layer')) {
-      mapInstance.addLayer({
+    if (!mapInstance.value.getLayer('mrt-routes-layer')) {
+      mapInstance.value.addLayer({
         id: 'mrt-routes-layer',
         type: 'line',
         source: 'mrt-routes',
@@ -127,8 +150,8 @@ const handleSelectFilter = (filter: FilterType) => {
 
 // 事件：選擇地點後飛行並關閉篩選抽屜
 const handleSelectLocation = (location: PointArea) => {
-  if (mapInstance) {
-    mapInstance.flyTo({
+  if (mapInstance.value) {
+    mapInstance.value.flyTo({
       center: [location.lon, location.lat],
       zoom: 17,
       duration: 1000
@@ -140,9 +163,9 @@ const handleSelectLocation = (location: PointArea) => {
 
 // 卸載：移除地圖實例避免記憶體洩漏
 onUnmounted(() => {
-  if (mapInstance) {
-    mapInstance.remove()
-    mapInstance = null
+  if (mapInstance.value) {
+    mapInstance.value.remove()
+    mapInstance.value = null
   }
 })
 </script>
@@ -151,6 +174,13 @@ onUnmounted(() => {
   <div class="relative w-full h-full">
     <!-- 地圖主容器 -->
     <div ref="mapContainer" class="w-full h-full"></div>
+
+    <!-- 涼適點標記 -->
+    <PointMarkers
+      :map="mapInstance"
+      :points="coldSpots"
+      :visible="true"
+    />
 
     <!-- 篩選按鈕列（左上） -->
     <FilterButtons

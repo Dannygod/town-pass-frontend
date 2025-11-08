@@ -152,13 +152,16 @@ export const mockPublicSafetyRisks: PointArea[] = [
   }
 ]
 
-// 所有地點數據
-export const allLocations: PointArea[] = [
-  ...mockColdSpots,
-  ...mockFireSafetyViolations,
-  ...mockAirPollution,
-  ...mockPublicSafetyRisks
-]
+// 注意：allLocations 現在應該在組件中動態組合，使用API獲取的涼適點數據
+// 此函數用於組合所有地點數據
+export function combineAllLocations(coldSpots: PointArea[]): PointArea[] {
+  return [
+    ...coldSpots,
+    ...mockFireSafetyViolations,
+    ...mockAirPollution,
+    ...mockPublicSafetyRisks
+  ]
+}
 
 // 篩選按鈕配置
 export const filterButtons: FilterButton[] = [

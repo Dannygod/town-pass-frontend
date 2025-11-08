@@ -40,12 +40,12 @@ const showMarkers = () => {
     // Create custom marker element
     const el = document.createElement('div')
     el.className = 'location-marker'
-    el.style.width = '32px'
-    el.style.height = '32px'
+    el.style.width = '20px'
+    el.style.height = '20px'
     el.style.borderRadius = '50%'
     el.style.backgroundColor = color
-    el.style.border = '3px solid #fff'
-    el.style.boxShadow = '0 2px 8px rgba(0,0,0,0.3)'
+    el.style.border = '2px solid #fff'
+    el.style.boxShadow = '0 2px 6px rgba(0,0,0,0.25)'
     el.style.cursor = 'pointer'
 
     // Create popup
