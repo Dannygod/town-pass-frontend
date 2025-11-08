@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { watch, onUnmounted, computed, ref } from 'vue'
+// 重構版：使用 Mapbox GeoJSON Source + Cluster Layers 取代 DOM Marker
+import { watch, onUnmounted, ref, nextTick } from 'vue'
 import mapboxgl from 'mapbox-gl'
 import type { PointArea } from '@/types/mapData'
 
@@ -8,147 +9,253 @@ interface Props {
   points: PointArea[]
   visible: boolean
 }
-
 const props = defineProps<Props>()
 
-const markers: mapboxgl.Marker[] = []
-const isUpdating = ref(false)
+// Layer / Source IDs（集中管理避免衝突）
+const SOURCE_ID = 'points-source'
+const CLUSTER_LAYER_ID = 'points-clusters'
+const CLUSTER_COUNT_LAYER_ID = 'points-cluster-count'
+const UNCLUSTERED_LAYER_ID = 'points-unclustered'
 
-// Color mapping based on type
-const getMarkerColor = (type: PointArea['type']): string => {
-  const colorMap: Record<PointArea['type'], string> = {
-    cold: '#5AB4C5', // primary500
-    fire_safety: '#D45251', // red500
-    air_pollution: '#FD853A', // orange500
-    public_safety: '#F5BA4B' // secondary500
+const sourceAdded = ref(false)
+let cleanupFns: Array<() => void> = []
+
+// 類型對應顏色（與原先 DOM marker 一致）
+const typeColorMap: Record<PointArea['type'], string> = {
+  cold: '#5AB4C5',
+  fire_safety: '#D45251',
+  air_pollution: '#FD853A',
+  public_safety: '#F5BA4B'
+}
+
+// 將點位轉成 GeoJSON FeatureCollection
+const buildGeoJSON = (): GeoJSON.FeatureCollection => {
+  return {
+    type: 'FeatureCollection',
+    features: props.points
+      .filter(p => Number.isFinite(p.lat) && Number.isFinite(p.lon))
+      .map(p => ({
+        type: 'Feature',
+        properties: {
+          id: p.id,
+          name: p.name,
+          type: p.type,
+          location_type: p.location_type || '',
+          address: p.address || '',
+          district_name: p.district_name || '',
+          open_hours: p.open_hours || '',
+          notes: p.notes || '',
+          facilities: p.facilities?.join('、') || ''
+        },
+        geometry: {
+          type: 'Point',
+          coordinates: [p.lon, p.lat]
+        }
+      })) as GeoJSON.Feature[]
   }
-  return colorMap[type] || '#5AB4C5'
 }
 
-const clearMarkers = () => {
-  markers.forEach(marker => marker.remove())
-  markers.length = 0
-}
+// 新增 Source 與 Layers（若尚未存在）
+const ensureSourceAndLayers = () => {
+  const map = props.map
+  if (!map || !props.visible) return
 
-// 獲取 location_type 圖標 HTML
-const getLocationTypeIcon = (locationType?: string): string => {
-  if (locationType === '戶外') {
-    return `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: inline-block; vertical-align: middle; margin-right: 4px;"><path d="M10 10v.2A3 3 0 0 1 8.9 16H5a3 3 0 0 1-1-5.8V10a3 3 0 0 1 6 0Z"/><path d="M7 16v6"/><path d="M13 19v3"/><path d="M12 19h8.3a1 1 0 0 0 .7-1.7L18 14h.3a1 1 0 0 0 .7-1.7L16 9h.2a1 1 0 0 0 .8-1.7L13 3l-1.4 1.5"/></svg>`
-  } else if (locationType === '室內') {
-    return `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: inline-block; vertical-align: middle; margin-right: 4px;"><path d="M11 20H2"/><path d="M11 4.562v16.157a1 1 0 0 0 1.242.97L19 20V5.562a2 2 0 0 0-1.515-1.94l-4-1A2 2 0 0 0 11 4.561z"/><path d="M11 4H8a2 2 0 0 0-2 2v14"/><path d="M14 12h.01"/><path d="M22 20h-3"/></svg>`
+  if (!sourceAdded.value) {
+    if (!map.getSource(SOURCE_ID)) {
+      map.addSource(SOURCE_ID, {
+        type: 'geojson',
+        data: buildGeoJSON(),
+        cluster: true,
+        clusterMaxZoom: 16,
+        clusterRadius: 50
+      })
+    }
+    sourceAdded.value = true
   }
-  return ''
-}
 
-const showMarkers = () => {
-  if (!props.map || isUpdating.value) return
-  
-  isUpdating.value = true
-  
-  try {
-    clearMarkers()
-
-    props.points.forEach(spot => {
-    const color = getMarkerColor(spot.type)
-    
-    // Create custom marker element
-    const el = document.createElement('div')
-    el.className = 'location-marker'
-    el.style.width = '20px'
-    el.style.height = '20px'
-    el.style.borderRadius = '50%'
-    el.style.backgroundColor = color
-    el.style.border = '2px solid #fff'
-    el.style.boxShadow = '0 2px 6px rgba(0,0,0,0.25)'
-    el.style.cursor = 'pointer'
-
-    // 構建 popup HTML 內容
-    let popupContent = `<div style="padding: 12px; min-width: 200px; max-width: 300px;">
-      <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">
-        <h3 style="margin: 0; font-weight: bold; color: ${color}; font-size: 14px;">${spot.name}</h3>
-        ${spot.location_type ? getLocationTypeIcon(spot.location_type) : ''}
-      </div>
-      <div style="display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: #666;">`
-    
-    if (spot.address) {
-      popupContent += `<div style="display: flex; gap: 8px;">
-        <span style="font-weight: 500; min-width: 40px;">地址：</span>
-        <span>${spot.address}</span>
-      </div>`
-    }
-    
-    if (spot.district_name) {
-      popupContent += `<div style="display: flex; gap: 8px;">
-        <span style="font-weight: 500; min-width: 40px;">區域：</span>
-        <span>${spot.district_name}</span>
-      </div>`
-    }
-    
-    if (spot.open_hours) {
-      popupContent += `<div style="display: flex; gap: 8px;">
-        <span style="font-weight: 500; min-width: 40px;">時間：</span>
-        <span style="white-space: pre-line;">${spot.open_hours}</span>
-      </div>`
-    }
-    
-    if (spot.facilities && spot.facilities.length > 0) {
-      popupContent += `<div style="display: flex; gap: 8px;">
-        <span style="font-weight: 500; min-width: 40px;">設施：</span>
-        <span>${spot.facilities.join('、')}</span>
-      </div>`
-    }
-    
-    if (spot.notes) {
-      popupContent += `<div style="display: flex; gap: 8px;">
-        <span style="font-weight: 500; min-width: 40px;">備註：</span>
-        <span style="white-space: pre-line;">${spot.notes}</span>
-      </div>`
-    }
-    
-    popupContent += `</div></div>`
-
-    // Create popup
-    const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(popupContent)
-
-    // Create marker
-    const marker = new mapboxgl.Marker(el)
-      .setLngLat([spot.lon, spot.lat])
-      .setPopup(popup)
-      .addTo(props.map!)
-
-      markers.push(marker)
+  // 集群圈 layer
+  if (!map.getLayer(CLUSTER_LAYER_ID)) {
+    map.addLayer({
+      id: CLUSTER_LAYER_ID,
+      type: 'circle',
+      source: SOURCE_ID,
+      filter: ['has', 'point_count'],
+      paint: {
+        'circle-color': [
+          'step',
+          ['get', 'point_count'],
+          '#71C5D5', // 小型集群
+          10, '#5AB4C5',
+          30, '#3A8DA0'
+        ],
+        'circle-radius': [
+          'step',
+          ['get', 'point_count'],
+          16,
+          10, 20,
+          30, 26
+        ],
+        'circle-stroke-color': '#ffffff',
+        'circle-stroke-width': 2
+      }
     })
-  } finally {
-    isUpdating.value = false
+  }
+
+  // 集群文字 layer
+  if (!map.getLayer(CLUSTER_COUNT_LAYER_ID)) {
+    map.addLayer({
+      id: CLUSTER_COUNT_LAYER_ID,
+      type: 'symbol',
+      source: SOURCE_ID,
+      filter: ['has', 'point_count'],
+      layout: {
+        'text-field': ['get', 'point_count'],
+        'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
+        'text-size': 12
+      },
+      paint: {
+        'text-color': '#ffffff'
+      }
+    })
+  }
+
+  // 一般（未集群）點位 layer
+  if (!map.getLayer(UNCLUSTERED_LAYER_ID)) {
+    map.addLayer({
+      id: UNCLUSTERED_LAYER_ID,
+      type: 'circle',
+      source: SOURCE_ID,
+      filter: ['!', ['has', 'point_count']],
+      paint: {
+        'circle-color': [
+          'match',
+          ['get', 'type'],
+          'cold', typeColorMap.cold,
+          'fire_safety', typeColorMap.fire_safety,
+          'air_pollution', typeColorMap.air_pollution,
+          'public_safety', typeColorMap.public_safety,
+          '#5AB4C5'
+        ],
+        'circle-radius': 8,
+        'circle-stroke-color': '#ffffff',
+        'circle-stroke-width': 2
+      }
+    })
+  }
+
+  // 事件：點擊集群 -> 展開
+  const onClusterClick = (e: any) => {
+    const features = map.queryRenderedFeatures(e.point, { layers: [CLUSTER_LAYER_ID] }) as any[]
+    if (!features || !features.length) return
+    const first = features[0]
+    const clusterId = first && first.properties ? first.properties.cluster_id : undefined
+    if (clusterId == null) return
+    const source: any = map.getSource(SOURCE_ID)
+    if (!source || typeof source.getClusterExpansionZoom !== 'function') return
+    source.getClusterExpansionZoom(clusterId, (err: any, zoom: number) => {
+      if (err) return
+      const coords = (first.geometry as any)?.coordinates
+      if (!coords) return
+      map.easeTo({ center: coords, zoom })
+    })
+  }
+  map.on('click', CLUSTER_LAYER_ID, onClusterClick)
+  cleanupFns.push(() => map.off('click', CLUSTER_LAYER_ID, onClusterClick))
+
+  // 事件：點擊未集群點 -> 顯示 popup
+  const onPointClick = (e: any) => {
+    const features = map.queryRenderedFeatures(e.point, { layers: [UNCLUSTERED_LAYER_ID] }) as any[]
+    if (!features || !features.length) return
+    const f = features[0]
+    const p: any = f.properties
+    const color = typeColorMap[p.type as PointArea['type']] || '#5AB4C5'
+    let html = `<div style="padding:12px;min-width:200px;max-width:280px;">`
+    html += `<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">`
+    html += `<h3 style="margin:0;font-weight:bold;color:${color};font-size:14px;">${p.name}</h3>`
+    if (p.location_type) html += `<span style=\"font-size:12px;color:#666;\">${p.location_type}</span>`
+    html += `</div>`
+    const detail = (label: string, value: string) => value ? `<div style=\"display:flex;gap:6px;font-size:12px;color:#555;\"><span style=\"min-width:38px;font-weight:500;\">${label}</span><span style=\"white-space:pre-line;\">${value}</span></div>` : ''
+    html += detail('地址：', p.address)
+    html += detail('區域：', p.district_name)
+    html += detail('時間：', p.open_hours)
+    html += detail('設施：', p.facilities)
+    html += detail('備註：', p.notes)
+    html += `</div>`
+    new mapboxgl.Popup({ offset: 20 })
+      .setLngLat(((f as any).geometry as any).coordinates)
+      .setHTML(html)
+      .addTo(map)
+  }
+  map.on('click', UNCLUSTERED_LAYER_ID, onPointClick)
+  cleanupFns.push(() => map.off('click', UNCLUSTERED_LAYER_ID, onPointClick))
+
+  // 滑鼠樣式
+  const onMouseEnter = () => map.getCanvas().style.cursor = 'pointer'
+  const onMouseLeave = () => map.getCanvas().style.cursor = ''
+  map.on('mouseenter', UNCLUSTERED_LAYER_ID, onMouseEnter)
+  map.on('mouseleave', UNCLUSTERED_LAYER_ID, onMouseLeave)
+  cleanupFns.push(() => {
+    map.off('mouseenter', UNCLUSTERED_LAYER_ID, onMouseEnter)
+    map.off('mouseleave', UNCLUSTERED_LAYER_ID, onMouseLeave)
+  })
+}
+
+// 更新 source 資料（點位變更時）
+const updateSourceData = () => {
+  if (!props.map || !sourceAdded.value) return
+  const source: any = props.map.getSource(SOURCE_ID)
+  if (source) {
+    source.setData(buildGeoJSON())
   }
 }
 
-// 使用 computed 來生成一個穩定的標識符，避免深度監聽導致的無限循環
-// 使用所有 id 的組合來確保準確檢測變化
-const pointsKey = computed(() => {
-  if (!props.points || props.points.length === 0) return ''
-  // 使用 points 的長度和所有 id 的組合來生成標識符
-  const ids = props.points.map(p => p.id).join(',')
-  return `${props.points.length}-${ids.substring(0, 100)}` // 限制長度避免過長
-})
+// 移除所有相關資源
+const removeAll = () => {
+  const map = props.map
+  if (!map) return
+  cleanupFns.forEach(fn => fn())
+  cleanupFns = []
+  ;[CLUSTER_COUNT_LAYER_ID, CLUSTER_LAYER_ID, UNCLUSTERED_LAYER_ID].forEach(id => {
+    if (map.getLayer(id)) map.removeLayer(id)
+  })
+  if (map.getSource(SOURCE_ID)) map.removeSource(SOURCE_ID)
+  sourceAdded.value = false
+}
 
-// 監聽 visible、map 和 pointsKey 的變化
+// 監聽：map / visible / points 變動
 watch(
-  () => [props.visible, props.map, pointsKey.value],
-  () => {
-    if (props.visible && props.map) {
-      showMarkers()
+  () => [props.map, props.visible],
+  ([mapRef, vis]) => {
+    const map = mapRef as mapboxgl.Map | null
+    if (map && vis) {
+      if ((map as any).loaded && (map as any).loaded()) {
+        ensureSourceAndLayers()
+        updateSourceData()
+      } else {
+        (map as any).once('load', () => {
+          ensureSourceAndLayers()
+          updateSourceData()
+        })
+      }
     } else {
-      clearMarkers()
+      removeAll()
     }
   },
   { immediate: true }
 )
 
-onUnmounted(() => {
-  clearMarkers()
-})
+watch(
+  () => props.points,
+  () => {
+    // 延遲到下一 tick，確保 source 已建立
+    nextTick(() => updateSourceData())
+  },
+  { deep: true }
+)
+
+onUnmounted(() => removeAll())
 </script>
 
+<!-- 此組件不渲染任何 DOM，自身僅管理 Mapbox 圖層 -->
 <template></template>
 

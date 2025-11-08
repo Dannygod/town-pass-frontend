@@ -58,7 +58,7 @@ export async function fetchColdSpots(): Promise<PointArea[]> {
     const data: GeoJSONFeatureCollection = await response.json()
     
     // 將 GeoJSON FeatureCollection 轉換為 PointArea 格式
-    return data.features.map((feature) => {
+    const mapped = data.features.map((feature) => {
       const props = feature.properties
       
       // 組合描述信息
@@ -77,12 +77,23 @@ export async function fetchColdSpots(): Promise<PointArea[]> {
       if (props.drinking) facilities.push('飲水')
       if (props.accessible_seat) facilities.push('無障礙座位')
       
+      // 轉成數字並驗證經緯度
+      const lonRaw = (props as any).lon ?? feature.geometry?.coordinates?.[0]
+      const latRaw = (props as any).lat ?? feature.geometry?.coordinates?.[1]
+      const lon = Number(lonRaw)
+      const lat = Number(latRaw)
+
+      if (!Number.isFinite(lat) || !Number.isFinite(lon) || lat < -90 || lat > 90 || lon < -180 || lon > 180) {
+        // 無效座標，略過此筆資料
+        return null as unknown as PointArea
+      }
+
       return {
         id: `cold-${props.id}`,
         name: props.name,
         type: 'cold' as const,
-        lat: props.lat || feature.geometry.coordinates[1], // 優先使用 properties 中的 lat
-        lon: props.lon || feature.geometry.coordinates[0], // 優先使用 properties 中的 lon
+        lat,
+        lon,
         description: descriptionParts.join(' | ') || undefined, // 保留舊格式以向後兼容
         // 詳細信息
         location_type: (props.location_type === '戶外' || props.location_type === '室內') 
@@ -95,6 +106,8 @@ export async function fetchColdSpots(): Promise<PointArea[]> {
         facilities: facilities.length > 0 ? facilities : undefined
       }
     })
+    // 過濾掉無效資料
+    return mapped.filter((f): f is PointArea => Boolean(f))
   } catch (error) {
     console.error('Failed to fetch cold spots:', error)
     // 如果API失敗，返回空數組或拋出錯誤

@@ -51,27 +51,27 @@ const getLocationTypeIcon = (locationType?: string) => {
         <!-- 分段顯示描述信息 -->
         <div class="flex flex-col gap-1.5 text-sm text-[#738995]">
           <div v-if="location.address" class="flex items-start gap-1.5">
-            <span class="font-medium min-w-[3rem]">地址：</span>
+            <span class="font-medium min-w-12">地址：</span>
             <span>{{ location.address }}</span>
           </div>
           
           <div v-if="location.district_name" class="flex items-start gap-1.5">
-            <span class="font-medium min-w-[3rem]">區域：</span>
+            <span class="font-medium min-w-12">區域：</span>
             <span>{{ location.district_name }}</span>
           </div>
           
           <div v-if="location.open_hours" class="flex items-start gap-1.5">
-            <span class="font-medium min-w-[3rem]">時間：</span>
+            <span class="font-medium min-w-12">時間：</span>
             <span class="whitespace-pre-line">{{ location.open_hours }}</span>
           </div>
           
           <div v-if="location.facilities && location.facilities.length > 0" class="flex items-start gap-1.5">
-            <span class="font-medium min-w-[3rem]">設施：</span>
+            <span class="font-medium min-w-12">設施：</span>
             <span>{{ location.facilities.join('、') }}</span>
           </div>
           
           <div v-if="location.notes" class="flex items-start gap-1.5">
-            <span class="font-medium min-w-[3rem]">備註：</span>
+            <span class="font-medium min-w-12">備註：</span>
             <span class="whitespace-pre-line">{{ location.notes }}</span>
           </div>
         </div>

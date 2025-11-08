@@ -22,35 +22,6 @@ const areaItems: Item[] = [
 
 <template>
   <div class="py-2 pb-2 px-6">
-    <!-- A. 地點 -->
-    <h2 class="text-base font-bold text-[#171B1D] mb-3">地點</h2>
-    <div class="grid grid-cols-3 gap-4">
-      <button
-        v-for="item in placeItems"
-        :key="item.key"
-        type="button"
-        class="group flex flex-col items-center text-center"
-      >
-        <div
-          class="w-16 h-16 rounded-xl bg-white border border-[#E3E7E9] p-2 flex items-center justify-center shadow-sm transition-all group-hover:shadow-md"
-        >
-          <!-- icon -->
-          <svg v-if="item.icon === 'marker'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-10 h-10" :style="{ color: item.color }" fill="currentColor">
-            <path d="M12 2a7 7 0 0 0-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 0 0-7-7Zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5Z"/>
-          </svg>
-          <svg v-else-if="item.icon === 'fire'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-10 h-10" :style="{ color: item.color }" fill="currentColor">
-            <path d="M12 2s4 3.5 4 7.5c0 1.5-.5 2.5-1 3.5.5-.2 1-.5 1.5-.5 1.7 0 3 1.7 3 3.5A6.5 6.5 0 0 1 13 22c-3.6 0-6.5-2.6-6.5-6 0-3.6 3.1-5.6 4.5-7.5C11.5 7 12 5 12 2Z"/>
-          </svg>
-          <svg v-else-if="item.icon === 'heart'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-10 h-10" :style="{ color: item.color }" fill="currentColor">
-            <path d="M12 21s-7.5-4.8-9.5-8.5C1 9.3 2.8 6 6.2 6c2 0 3.2 1.1 3.8 2 .6-.9 1.8-2 3.8-2 3.4 0 5.2 3.3 3.7 6.5C19.5 16.2 12 21 12 21Z"/>
-          </svg>
-        </div>
-        <span class="mt-2 text-xs text-[#171B1D]">{{ item.label }}</span>
-      </button>
-    </div>
-
-    <hr class="my-4 border-[#E3E7E9]" />
-
     <!-- B. 區域 -->
     <h2 class="text-base font-bold text-[#171B1D] mb-3">區域</h2>
     <div class="grid grid-cols-3 gap-4">
