@@ -17,13 +17,20 @@ import HelloWorld from './components/HelloWorld.vue'
     </div>
   </header>
 
-  <RouterView />
+  <div class="view-wrapper">
+    <RouterView />
+  </div>
 </template>
 
 <style scoped>
 header {
   line-height: 1.5;
   max-height: 100vh;
+}
+
+.view-wrapper {
+  /* Allow routed view (HomeView with map) to take remaining space */
+  min-height: calc(100vh - 300px); /* approximate header height; adjust as needed */
 }
 
 .logo {
