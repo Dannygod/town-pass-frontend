@@ -24,8 +24,7 @@ let cleanupFns: Array<() => void> = []
 const typeColorMap: Record<PointArea['type'], string> = {
   cold: '#5AB4C5',
   fire_safety: '#D45251',
-  air_pollution: '#FD853A',
-  public_safety: '#F5BA4B'
+  AED_location: '#22C55E'
 }
 
 // 將點位轉成 GeoJSON FeatureCollection
@@ -132,8 +131,7 @@ const ensureSourceAndLayers = () => {
           ['get', 'type'],
           'cold', typeColorMap.cold,
           'fire_safety', typeColorMap.fire_safety,
-          'air_pollution', typeColorMap.air_pollution,
-          'public_safety', typeColorMap.public_safety,
+          'AED_location', typeColorMap.AED_location,
           '#5AB4C5'
         ],
         'circle-radius': 8,

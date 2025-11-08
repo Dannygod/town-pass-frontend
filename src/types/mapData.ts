@@ -2,7 +2,7 @@
 export interface PointArea {
   id: string
   name: string
-  type: 'cold' | 'fire_safety' | 'air_pollution' | 'public_safety' // 可擴展更多類型
+  type: 'cold' | 'fire_safety' | 'AED_location' // 可擴展更多類型
   lat: number
   lon: number
   description?: string
@@ -16,7 +16,7 @@ export interface PointArea {
 }
 
 // 篩選類型
-export type FilterType = 'cold' | 'fire_safety' | 'air_pollution' | 'public_safety'
+export type FilterType = 'cold' | 'fire_safety' | 'AED_location'
 
 // 篩選按鈕配置
 export interface FilterButton {

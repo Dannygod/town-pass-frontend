@@ -77,7 +77,7 @@ export const mockAirPollution: PointArea[] = [
   {
     id: 'air-1',
     name: '信義路五段',
-    type: 'air_pollution',
+    type: 'AED_location',
     lat: 25.0320,
     lon: 121.5630,
     description: 'PM2.5 濃度超標'
@@ -85,7 +85,7 @@ export const mockAirPollution: PointArea[] = [
   {
     id: 'air-2',
     name: '松仁路交叉口',
-    type: 'air_pollution',
+    type: 'AED_location',
     lat: 25.0360,
     lon: 121.5660,
     description: '空氣品質不良'
@@ -93,7 +93,7 @@ export const mockAirPollution: PointArea[] = [
   {
     id: 'air-3',
     name: '市府轉運站',
-    type: 'air_pollution',
+    type: 'AED_location',
     lat: 25.0380,
     lon: 121.5620,
     description: 'NO2 濃度偏高'
@@ -101,7 +101,7 @@ export const mockAirPollution: PointArea[] = [
   {
     id: 'air-4',
     name: '世貿中心',
-    type: 'air_pollution',
+    type: 'AED_location',
     lat: 25.0300,
     lon: 121.5600,
     description: '臭氧濃度超標'
@@ -109,11 +109,11 @@ export const mockAirPollution: PointArea[] = [
 ]
 
 // Mock data for 公安風險 (Public Safety Risks)
-export const mockPublicSafetyRisks: PointArea[] = [
+export const mockFireSafety: PointArea[] = [
   {
     id: 'safety-1',
     name: '信義商圈人行道',
-    type: 'public_safety',
+    type: 'fire_safety',
     lat: 25.0355,
     lon: 121.5645,
     description: '路面不平整，有跌倒風險'
@@ -121,7 +121,7 @@ export const mockPublicSafetyRisks: PointArea[] = [
   {
     id: 'safety-2',
     name: '101大樓周邊',
-    type: 'public_safety',
+    type: 'fire_safety',
     lat: 25.0335,
     lon: 121.5635,
     description: '施工區域警示不足'
@@ -129,7 +129,7 @@ export const mockPublicSafetyRisks: PointArea[] = [
   {
     id: 'safety-3',
     name: '市政府廣場',
-    type: 'public_safety',
+    type: 'fire_safety',
     lat: 25.0375,
     lon: 121.5655,
     description: '照明設備故障'
@@ -137,7 +137,7 @@ export const mockPublicSafetyRisks: PointArea[] = [
   {
     id: 'safety-4',
     name: '世貿公園',
-    type: 'public_safety',
+    type: 'fire_safety',
     lat: 25.0315,
     lon: 121.5615,
     description: '設施維護不良'
@@ -145,7 +145,7 @@ export const mockPublicSafetyRisks: PointArea[] = [
   {
     id: 'safety-5',
     name: '國父紀念館周邊',
-    type: 'public_safety',
+    type: 'fire_safety',
     lat: 25.0400,
     lon: 121.5605,
     description: '交通標誌不清'
@@ -157,9 +157,8 @@ export const mockPublicSafetyRisks: PointArea[] = [
 export function combineAllLocations(coldSpots: PointArea[]): PointArea[] {
   return [
     ...coldSpots,
-    ...mockFireSafetyViolations,
+    ...mockFireSafety,
     ...mockAirPollution,
-    ...mockPublicSafetyRisks
   ]
 }
 
@@ -172,18 +171,13 @@ export const filterButtons: FilterButton[] = [
   },
   {
     id: 'fire_safety',
-    label: '消防不合格',
+    label: '消防不合格場所',
     color: '#D45251' // red500
   },
   {
-    id: 'air_pollution',
-    label: '空氣污染',
-    color: '#FD853A' // orange500
-  },
-  {
-    id: 'public_safety',
-    label: '公安風險',
-    color: '#F5BA4B' // secondary500
+    id: 'AED_location',
+    label: 'AED',
+    color: '#22C55E' // green500
   }
 ]
 
