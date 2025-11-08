@@ -6,6 +6,13 @@ export interface PointArea {
   lat: number
   lon: number
   description?: string
+  // 詳細信息（用於 UI 顯示）
+  location_type?: '戶外' | '室內'
+  address?: string
+  district_name?: string
+  open_hours?: string
+  notes?: string
+  facilities?: string[]
 }
 
 // 篩選類型

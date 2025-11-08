@@ -76,9 +76,6 @@ export async function fetchColdSpots(): Promise<PointArea[]> {
       if (props.seating) facilities.push('座位')
       if (props.drinking) facilities.push('飲水')
       if (props.accessible_seat) facilities.push('無障礙座位')
-      if (facilities.length > 0) {
-        descriptionParts.push(`設施：${facilities.join('、')}`)
-      }
       
       return {
         id: `cold-${props.id}`,
@@ -86,7 +83,16 @@ export async function fetchColdSpots(): Promise<PointArea[]> {
         type: 'cold' as const,
         lat: props.lat || feature.geometry.coordinates[1], // 優先使用 properties 中的 lat
         lon: props.lon || feature.geometry.coordinates[0], // 優先使用 properties 中的 lon
-        description: descriptionParts.join(' | ') || undefined
+        description: descriptionParts.join(' | ') || undefined, // 保留舊格式以向後兼容
+        // 詳細信息
+        location_type: (props.location_type === '戶外' || props.location_type === '室內') 
+          ? props.location_type 
+          : undefined,
+        address: props.address || undefined,
+        district_name: props.district_name || undefined,
+        open_hours: props.open_hours || undefined,
+        notes: props.notes || undefined,
+        facilities: facilities.length > 0 ? facilities : undefined
       }
     })
   } catch (error) {
