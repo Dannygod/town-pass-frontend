@@ -2,10 +2,21 @@
 export interface PointArea {
   id: string
   name: string
-  type: 'cold' // 涼適點 - cold and comfortable place
+  type: 'cold' | 'fire_safety' | 'air_pollution' | 'public_safety' // 可擴展更多類型
   lat: number
   lon: number
   description?: string
+}
+
+// 篩選類型
+export type FilterType = 'cold' | 'fire_safety' | 'air_pollution' | 'public_safety'
+
+// 篩選按鈕配置
+export interface FilterButton {
+  id: FilterType
+  label: string
+  icon?: string
+  color: string
 }
 
 // 範圍區域 - Polygon Region

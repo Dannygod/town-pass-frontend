@@ -13,6 +13,17 @@ const props = defineProps<Props>()
 
 const markers: mapboxgl.Marker[] = []
 
+// Color mapping based on type
+const getMarkerColor = (type: PointArea['type']): string => {
+  const colorMap: Record<PointArea['type'], string> = {
+    cold: '#5AB4C5', // primary500
+    fire_safety: '#D45251', // red500
+    air_pollution: '#FD853A', // orange500
+    public_safety: '#F5BA4B' // secondary500
+  }
+  return colorMap[type] || '#5AB4C5'
+}
+
 const clearMarkers = () => {
   markers.forEach(marker => marker.remove())
   markers.length = 0
@@ -24,13 +35,15 @@ const showMarkers = () => {
   clearMarkers()
 
   props.points.forEach(spot => {
+    const color = getMarkerColor(spot.type)
+    
     // Create custom marker element
     const el = document.createElement('div')
-    el.className = 'cold-spot-marker'
+    el.className = 'location-marker'
     el.style.width = '32px'
     el.style.height = '32px'
     el.style.borderRadius = '50%'
-    el.style.backgroundColor = '#5AB4C5'
+    el.style.backgroundColor = color
     el.style.border = '3px solid #fff'
     el.style.boxShadow = '0 2px 8px rgba(0,0,0,0.3)'
     el.style.cursor = 'pointer'
@@ -38,7 +51,7 @@ const showMarkers = () => {
     // Create popup
     const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(
       `<div style="padding: 8px;">
-        <h3 style="margin: 0 0 4px 0; font-weight: bold; color: #5AB4C5;">${spot.name}</h3>
+        <h3 style="margin: 0 0 4px 0; font-weight: bold; color: ${color};">${spot.name}</h3>
         <p style="margin: 0; font-size: 12px; color: #666;">${spot.description || ''}</p>
       </div>`
     )

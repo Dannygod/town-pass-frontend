@@ -6,7 +6,7 @@
       @click="handleMaskClick"
     >
       <div
-        class="w-full bg-white rounded-t-[20px] shadow-[0_-2px_20px_rgba(0,0,0,0.1)] transition-transform duration-300 max-h-[80vh] flex flex-col"
+        class="w-full bg-white rounded-t-[20px] shadow-[0_-2px_20px_rgba(0,0,0,0.1)] transition-transform duration-300 max-h-[85vh] flex flex-col"
         @click.stop
       >
         <div class="py-3 flex justify-center items-center">

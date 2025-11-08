@@ -6,8 +6,10 @@ import BottomSheet from './molecules/BottomSheet.vue'
 import PointMarkers from './map/PointMarkers.vue'
 import PolygonRegions from './map/PolygonRegions.vue'
 import LayerSelector from './map/LayerSelector.vue'
-import { mockColdSpots, mockPolygonRegions } from '@/data/mockMapData'
-import type { LayerType } from '@/types/mapData'
+import FilterButtons from './map/FilterButtons.vue'
+import LocationList from './map/LocationList.vue'
+import { mockPolygonRegions, filterButtons, allLocations } from '@/data/mockMapData'
+import type { LayerType, FilterType, PointArea } from '@/types/mapData'
 
 const mapContainer = ref<HTMLDivElement | null>(null)
 let mapInstance: mapboxgl.Map | null = null
@@ -16,9 +18,25 @@ const map = computed(() => mapInstance)
 
 // Bottom sheet state
 const showLayerSheet = ref(false)
+const showFilterSheet = ref(false)
 
 // Active layer state
 const activeLayer = ref<LayerType>('none')
+
+// Filter state
+const activeFilter = ref<FilterType | null>(null)
+
+// Filtered locations based on active filter
+const filteredLocations = computed(() => {
+  if (!activeFilter.value) return []
+  return allLocations.filter(location => location.type === activeFilter.value)
+})
+
+// Active filter button label
+const activeFilterLabel = computed(() => {
+  if (!activeFilter.value) return ''
+  return filterButtons.find(btn => btn.id === activeFilter.value)?.label || ''
+})
 
 // Initialize map
 onMounted(() => {
@@ -112,6 +130,32 @@ const handleSelectLayer = (layer: 'points' | 'regions') => {
   }
 }
 
+// Handle filter selection
+const handleSelectFilter = (filter: FilterType) => {
+  if (activeFilter.value === filter) {
+    // Toggle off
+    activeFilter.value = null
+    showFilterSheet.value = false
+  } else {
+    // Show selected filter
+    activeFilter.value = filter
+    showFilterSheet.value = true
+  }
+}
+
+// Handle location selection
+const handleSelectLocation = (location: PointArea) => {
+  if (mapInstance) {
+    mapInstance.flyTo({
+      center: [location.lon, location.lat],
+      zoom: 17,
+      duration: 1000
+    })
+    // Close the bottom sheet after selecting a location
+    showFilterSheet.value = false
+  }
+}
+
 onUnmounted(() => {
   if (mapInstance) {
     mapInstance.remove()
@@ -123,6 +167,13 @@ onUnmounted(() => {
 <template>
   <div class="relative w-full h-full">
     <div ref="mapContainer" class="w-full h-full"></div>
+
+    <!-- Filter Buttons (Top) -->
+    <FilterButtons
+      :filters="filterButtons"
+      :active-filter="activeFilter"
+      @select-filter="handleSelectFilter"
+    />
 
     <!-- Layer Toggle Button (Top Right) -->
     <button
@@ -150,8 +201,8 @@ onUnmounted(() => {
     <!-- Map Layers -->
     <PointMarkers
       :map="map"
-      :points="mockColdSpots"
-      :visible="activeLayer === 'points'"
+      :points="filteredLocations"
+      :visible="activeFilter !== null"
     />
     <PolygonRegions
       :map="map"
@@ -165,6 +216,15 @@ onUnmounted(() => {
         :active-layer="activeLayer"
         @select-layer="handleSelectLayer"
         @close="showLayerSheet = false"
+      />
+    </BottomSheet>
+
+    <!-- Bottom Sheet for Filter Locations -->
+    <BottomSheet v-model:isShow="showFilterSheet">
+      <LocationList
+        :locations="filteredLocations"
+        :title="activeFilterLabel"
+        @select-location="handleSelectLocation"
       />
     </BottomSheet>
   </div>
