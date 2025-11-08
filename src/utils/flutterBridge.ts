@@ -28,40 +28,67 @@ export function isInFlutterWebView(): boolean {
 
 /**
  * 向 Flutter 發送訊息
+ * 使用 WebMessageListener 的 onmessage 事件處理器接收回覆
  */
-export function postMessageToFlutter(name: string, data: any = null): Promise<any> {
+export async function postMessageToFlutter(name: string, data: any = null): Promise<any> {
+  if (!isInFlutterWebView()) {
+    throw new Error('不在 Flutter WebView 環境中')
+  }
+
   return new Promise((resolve, reject) => {
-    if (!isInFlutterWebView()) {
-      reject(new Error('不在 Flutter WebView 環境中'))
-      return
+    const flutterObject = (window as any).flutterObject
+
+    console.log(`[FlutterBridge] 發送訊息: ${name}`, data)
+
+    // 設定超時（10秒）
+    const timeout = setTimeout(() => {
+      // 移除訊息處理器
+      flutterObject.onmessage = null
+      console.error('[FlutterBridge] 回覆超時')
+      reject(new Error('Flutter 回覆超時'))
+    }, 10000)
+
+    // 設定 onmessage 處理器接收回覆
+    flutterObject.onmessage = (event: MessageEvent) => {
+      clearTimeout(timeout)
+
+      try {
+        console.log('[FlutterBridge] 收到回覆:', event.data)
+
+        // 解析回覆
+        let response: FlutterMessage
+        if (typeof event.data === 'string') {
+          response = JSON.parse(event.data)
+        } else {
+          response = event.data
+        }
+
+        // 檢查是否為對應的回覆
+        if (response.name === name) {
+          console.log('[FlutterBridge] 回覆資料:', response.data)
+          resolve(response.data)
+        } else {
+          console.warn(`[FlutterBridge] 回覆訊息名稱不符: 期望 ${name}, 收到 ${response.name}`)
+          reject(new Error(`回覆訊息名稱不符: 期望 ${name}, 收到 ${response.name}`))
+        }
+      } catch (error) {
+        console.error('[FlutterBridge] 解析回覆失敗:', error)
+        reject(error)
+      } finally {
+        // 清除 onmessage 處理器
+        flutterObject.onmessage = null
+      }
     }
 
+    // 發送訊息
     try {
-      // 發送訊息到 Flutter
       const message = JSON.stringify({ name, data })
-      ;(window as any).flutterObject.postMessage(message)
-
-      // 監聽回覆
-      const handleMessage = (event: MessageEvent) => {
-        try {
-          const response: FlutterMessage = JSON.parse(event.data)
-          if (response.name === name) {
-            window.removeEventListener('message', handleMessage)
-            resolve(response.data)
-          }
-        } catch (error) {
-          console.error('解析 Flutter 回覆失敗:', error)
-        }
-      }
-
-      window.addEventListener('message', handleMessage)
-
-      // 設定超時（10秒）
-      setTimeout(() => {
-        window.removeEventListener('message', handleMessage)
-        reject(new Error('Flutter 回覆超時'))
-      }, 10000)
+      console.log('[FlutterBridge] 發送訊息內容:', message)
+      flutterObject.postMessage(message)
     } catch (error) {
+      clearTimeout(timeout)
+      flutterObject.onmessage = null
+      console.error('[FlutterBridge] 發送訊息失敗:', error)
       reject(error)
     }
   })
