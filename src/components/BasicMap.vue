@@ -9,6 +9,7 @@ import LayerSelector from './map/LayerSelector.vue'
 import FilterButtons from './map/FilterButtons.vue'
 import LocationList from './map/LocationList.vue'
 import PointMarkers from './map/PointMarkers.vue'
+import EnvIndicators from './map/EnvIndicators.vue'
 // 資料與型別：篩選按鈕設定與所有點位資料
 import { filterButtons, combineAllLocations } from '@/data/mockMapData'
 import { fetchColdSpots } from '@/api/sites'
@@ -17,6 +18,8 @@ import type { FilterType, PointArea } from '@/types/mapData'
 // 地圖容器與實例
 const mapContainer = ref<HTMLDivElement | null>(null)
 const mapInstance = ref<mapboxgl.Map | null>(null) as any
+// 地圖中心點（供 EnvIndicators 使用 API 時帶入）
+const mapCenter = ref<{ lng: number; lat: number } | null>(null)
 
 // 抽屜顯示狀態（圖層 / 篩選）
 const showLayerSheet = ref(false)
@@ -87,6 +90,14 @@ onMounted(async () => {
     if (!mapInstance.value) {
       return
     }
+
+    // 初始化與後續移動結束時更新中心點
+    const c = mapInstance.value.getCenter()
+    mapCenter.value = { lng: c.lng, lat: c.lat }
+    mapInstance.value.on('moveend', () => {
+      const center = mapInstance.value!.getCenter()
+      mapCenter.value = { lng: center.lng, lat: center.lat }
+    })
 
     if (!mapInstance.value.getSource('mrt-routes')) {
       mapInstance.value.addSource('mrt-routes', {
@@ -188,6 +199,11 @@ onUnmounted(() => {
       :active-filter="activeFilter"
       @select-filter="handleSelectFilter"
     />
+
+    <!-- 環境指標列（置於篩選按鈕下方，左上） -->
+    <div class="absolute top-16 left-4 right-20 z-40">
+      <EnvIndicators :center="mapCenter" />
+    </div>
 
     <!-- 圖層抽屜觸發按鈕（右上） -->
     <LayerToggleButton :active="showLayerSheet" @click="toggleLayerSheet" />
