@@ -1,11 +1,18 @@
 <template>
   <transition name="bottom-sheet">
-    <div v-if="isShow" class="bottom-sheet-mask" @click="handleMaskClick">
-      <div class="bottom-sheet-container" @click.stop>
-        <div class="bottom-sheet-header">
-          <div class="bottom-sheet-handle"></div>
+    <div
+      v-if="isShow"
+      class="fixed z-[9998] top-0 left-0 w-full h-full bg-black/50 flex items-end transition-opacity duration-300"
+      @click="handleMaskClick"
+    >
+      <div
+        class="w-full bg-white rounded-t-[20px] shadow-[0_-2px_20px_rgba(0,0,0,0.1)] transition-transform duration-300 max-h-[80vh] flex flex-col"
+        @click.stop
+      >
+        <div class="py-3 flex justify-center items-center">
+          <div class="w-10 h-1 bg-gray-300 rounded-sm"></div>
         </div>
-        <div class="bottom-sheet-body">
+        <div class="px-6 pb-8 overflow-y-auto">
           <slot></slot>
         </div>
       </div>
@@ -36,49 +43,6 @@ const handleMaskClick = () => {
 </script>
 
 <style scoped>
-.bottom-sheet-mask {
-  position: fixed;
-  z-index: 9998;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: flex-end;
-  transition: opacity 0.3s ease;
-}
-
-.bottom-sheet-container {
-  width: 100%;
-  background-color: #fff;
-  border-radius: 20px 20px 0 0;
-  box-shadow: 0 -2px 20px rgba(0, 0, 0, 0.1);
-  transition: transform 0.3s ease;
-  max-height: 80vh;
-  display: flex;
-  flex-direction: column;
-}
-
-.bottom-sheet-header {
-  padding: 12px 0;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.bottom-sheet-handle {
-  width: 40px;
-  height: 4px;
-  background-color: #d1d5db;
-  border-radius: 2px;
-}
-
-.bottom-sheet-body {
-  padding: 0 24px 32px 24px;
-  overflow-y: auto;
-}
-
 /* Transition animations */
 .bottom-sheet-enter-active,
 .bottom-sheet-leave-active {
@@ -90,15 +54,15 @@ const handleMaskClick = () => {
   opacity: 0;
 }
 
-.bottom-sheet-enter-active .bottom-sheet-container {
+.bottom-sheet-enter-active > div {
   transition: transform 0.3s ease;
 }
 
-.bottom-sheet-enter-from .bottom-sheet-container {
+.bottom-sheet-enter-from > div {
   transform: translateY(100%);
 }
 
-.bottom-sheet-leave-to .bottom-sheet-container {
+.bottom-sheet-leave-to > div {
   transform: translateY(100%);
 }
 </style>
