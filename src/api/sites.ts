@@ -115,3 +115,52 @@ export async function fetchColdSpots(): Promise<PointArea[]> {
   }
 }
 
+/**
+ * 獲取所有 AED 位置
+ * 結構與 /sites 類似，為 GeoJSON FeatureCollection
+ */
+export async function fetchAeds(): Promise<PointArea[]> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/aeds`)
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`)
+    }
+
+    const data: any = await response.json()
+    const features: any[] = Array.isArray(data?.features) ? data.features : []
+
+    const mapped = features.map((feature) => {
+      const props = feature?.properties ?? {}
+      const coords = feature?.geometry?.coordinates
+      const lonRaw = (props as any).lon ?? (Array.isArray(coords) ? coords[0] : undefined)
+      const latRaw = (props as any).lat ?? (Array.isArray(coords) ? coords[1] : undefined)
+      const lon = Number(lonRaw)
+      const lat = Number(latRaw)
+
+      if (!Number.isFinite(lat) || !Number.isFinite(lon) || lat < -90 || lat > 90 || lon < -180 || lon > 180) {
+        return null as unknown as PointArea
+      }
+
+      // 描述與補充資訊
+      const descriptionParts: string[] = []
+      if (props.place) descriptionParts.push(`位置：${props.place}`)
+      if (props.description) descriptionParts.push(`說明：${props.description}`)
+
+      return {
+        id: `aed-${props.id ?? `${lon}-${lat}`}`,
+        name: props.name || 'AED',
+        type: 'AED_location' as const,
+        lat,
+        lon,
+        description: descriptionParts.join(' | ') || undefined,
+        address: props.address || undefined
+      }
+    })
+
+    return mapped.filter((f): f is PointArea => Boolean(f))
+  } catch (error) {
+    console.error('Failed to fetch AED locations:', error)
+    throw error
+  }
+}
+

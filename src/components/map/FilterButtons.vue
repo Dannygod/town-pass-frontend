@@ -26,9 +26,10 @@ const handleFilterClick = (filterId: FilterType) => {
       class="shrink-0 px-4 py-2 rounded-full text-sm font-semibold transition-all duration-200 whitespace-nowrap shadow-sm focus:outline-none focus:ring-2 focus:ring-[#5AB4C5]/50"
       :class="[
         props.activeFilter === filter.id
-          ? 'bg-[#5AB4C5] text-white shadow-md'
-          : 'bg-white text-[#475259] border border-[#E3E7E9] hover:border-[#5AB4C5] hover:text-[#5AB4C5]'
+          ? 'text-white shadow-md'
+          : 'bg-white text-[#475259] border border-[#E3E7E9]'
       ]"
+      :style="props.activeFilter === filter.id ? { backgroundColor: filter.color } : {}"
       :aria-pressed="props.activeFilter === filter.id"
       type="button"
       @click="handleFilterClick(filter.id)"

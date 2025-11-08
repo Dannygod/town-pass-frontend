@@ -12,8 +12,8 @@ import LocationList from './map/LocationList.vue'
 import PointMarkers from './map/PointMarkers.vue'
 import EnvIndicators from './map/EnvIndicators.vue'
 // 資料與型別：篩選按鈕設定與所有點位資料
-import { filterButtons, combineAllLocations } from '@/data/mockMapData'
-import { fetchColdSpots } from '@/api/sites'
+// 僅使用 API 資料來源，移除 mockMapData 依賴
+import { fetchColdSpots, fetchAeds } from '@/api/sites'
 import type { FilterType, PointArea } from '@/types/mapData'
 // 定位工具
 import { locateUser } from '@/utils/locationUtils'
@@ -28,12 +28,16 @@ const mapCenter = ref<{ lng: number; lat: number } | null>(null)
 const showLayerSheet = ref(false)
 const showFilterSheet = ref(false)
 
-// 涼適點數據（從API獲取）
+// 涼適點 + AED 數據（從 API 獲取）
 const coldSpots = ref<PointArea[]>([])
+const aedSpots = ref<PointArea[]>([])
 
-// 所有地點數據（動態組合）
+// 所有地點數據（動態組合：涼適點 + AED）
 const allLocations = computed<PointArea[]>(() => {
-  return combineAllLocations(coldSpots.value)
+  return [
+    ...coldSpots.value,
+    ...aedSpots.value,
+  ]
 })
 
 // 篩選狀態與衍生資料
@@ -62,9 +66,26 @@ const loadColdSpots = async () => {
   }
 }
 
+// 載入 AED 數據
+const loadAeds = async () => {
+  try {
+    const spots = await fetchAeds()
+    aedSpots.value = spots
+  } catch (error) {
+    console.error('載入 AED 數據失敗:', error)
+    aedSpots.value = []
+  }
+}
+
+// 篩選按鈕（僅 API 資料來源）
+const filterButtons: { id: 'cold' | 'AED_location'; label: string; color: string }[] = [
+  { id: 'cold', label: '涼適點', color: '#5AB4C5' },
+  { id: 'AED_location', label: 'AED', color: '#F97316' } // 橘色 (Tailwind orange-500)
+]
+
 // 地圖初始化（載入樣式與 MRT 路線）
 onMounted(async () => {
-  await loadColdSpots()
+  await Promise.all([loadColdSpots(), loadAeds()])
 
   const token = import.meta.env.VITE_MAPBOX_API_KEY
   if (!token) {
@@ -151,9 +172,9 @@ onMounted(async () => {
 })
 
 // 事件：切換圖層抽屜
-const toggleLayerSheet = () => {
-  showLayerSheet.value = !showLayerSheet.value
-}
+// const toggleLayerSheet = () => {
+//   showLayerSheet.value = !showLayerSheet.value
+// }
 
 // 事件：選擇篩選（同一個則關閉）
 const handleSelectFilter = (filter: FilterType) => {
@@ -210,7 +231,7 @@ onUnmounted(() => {
     <!-- 涼適點標記 -->
     <PointMarkers
       :map="mapInstance"
-      :points="coldSpots"
+      :points="activeFilter ? allLocations.filter(p => p.type === activeFilter) : []"
       :visible="true"
     />
 
@@ -227,15 +248,15 @@ onUnmounted(() => {
     </div>
 
     <!-- 圖層抽屜觸發按鈕（右上） -->
-    <LayerToggleButton :active="showLayerSheet" @click="toggleLayerSheet" />
+    <!-- <LayerToggleButton :active="showLayerSheet" @click="toggleLayerSheet" /> -->
 
     <!-- 定位按鈕（右下） -->
     <LocationButton :is-locating="isLocating" @click="handleLocateUser" />
 
     <!-- 圖層選擇抽屜 -->
-    <BottomSheet v-model:isShow="showLayerSheet">
+    <!-- <BottomSheet v-model:isShow="showLayerSheet">
       <LayerSelector />
-    </BottomSheet>
+    </BottomSheet> -->
 
     <!-- 篩選結果地點抽屜 -->
     <BottomSheet v-model:isShow="showFilterSheet">

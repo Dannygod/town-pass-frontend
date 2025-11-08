@@ -24,7 +24,45 @@ let cleanupFns: Array<() => void> = []
 const typeColorMap: Record<PointArea['type'], string> = {
   cold: '#5AB4C5',
   fire_safety: '#D45251',
-  AED_location: '#22C55E'
+  AED_location: '#F97316' // 橘色
+}
+
+// 取得目前主要的點位類型（此專案情境下，activeFilter 會讓 points 單一類型）
+const getPrimaryType = (): PointArea['type'] | null => {
+  const arr = props.points as PointArea[] | undefined
+  const first = Array.isArray(arr) && arr.length > 0 ? arr[0] : undefined
+  return first ? first.type : null
+}
+
+// 依類型回傳集群圈用的顏色 step 表達式
+const getClusterColorExpression = (type: PointArea['type'] | null): any => {
+  if (type === 'AED_location') {
+    // 橘色系（點數越多顏色越深）
+    return [
+      'step',
+      ['get', 'point_count'],
+      '#FDBA74', // 少量（orange-300）
+      10, '#FB923C', // 中等（orange-400）
+      30, '#F97316' // 大量（orange-500）
+    ]
+  }
+  // 預設（涼適點）維持原本藍色系
+  return [
+    'step',
+    ['get', 'point_count'],
+    '#71C5D5', // 小型集群
+    10, '#5AB4C5',
+    30, '#3A8DA0'
+  ]
+}
+
+// 依當前主要類型更新集群樣式（顏色）
+const updateClusterStyle = () => {
+  const map = props.map
+  if (!map || !map.getLayer(CLUSTER_LAYER_ID)) return
+  const primary = getPrimaryType()
+  const colorExpr = getClusterColorExpression(primary)
+  map.setPaintProperty(CLUSTER_LAYER_ID, 'circle-color', colorExpr)
 }
 
 // 將點位轉成 GeoJSON FeatureCollection
@@ -80,13 +118,7 @@ const ensureSourceAndLayers = () => {
       source: SOURCE_ID,
       filter: ['has', 'point_count'],
       paint: {
-        'circle-color': [
-          'step',
-          ['get', 'point_count'],
-          '#71C5D5', // 小型集群
-          10, '#5AB4C5',
-          30, '#3A8DA0'
-        ],
+        'circle-color': getClusterColorExpression(getPrimaryType()),
         'circle-radius': [
           'step',
           ['get', 'point_count'],
@@ -205,6 +237,7 @@ const updateSourceData = () => {
   if (source) {
     source.setData(buildGeoJSON())
   }
+  updateClusterStyle()
 }
 
 // 移除所有相關資源
@@ -246,7 +279,10 @@ watch(
   () => props.points,
   () => {
     // 延遲到下一 tick，確保 source 已建立
-    nextTick(() => updateSourceData())
+    nextTick(() => {
+      updateSourceData()
+      updateClusterStyle()
+    })
   },
   { deep: true }
 )
